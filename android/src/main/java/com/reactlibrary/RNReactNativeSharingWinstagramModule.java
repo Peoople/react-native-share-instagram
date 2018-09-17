@@ -29,6 +29,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 import android.os.Environment;
+import android.os.StrictMode;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -142,6 +143,9 @@ public class RNReactNativeSharingWinstagramModule extends ReactContextBaseJavaMo
              // Set the MIME type
              share.setType(type);
              share.setPackage("com.instagram.android");
+               
+             StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+             StrictMode.setVmPolicy(builder.build());
 
              Uri uri = Uri.fromFile(media);
 

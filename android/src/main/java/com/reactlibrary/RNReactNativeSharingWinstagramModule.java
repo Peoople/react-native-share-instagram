@@ -138,22 +138,24 @@ public class RNReactNativeSharingWinstagramModule extends ReactContextBaseJavaMo
          } else {
            if(media.exists()) {
              // Create the new Intent using the 'Send' action.
-             Intent share = new Intent(Intent.ACTION_SEND);
+             Intent share = new Intent("com.instagram.share.ADD_TO_STORY");
 
              // Set the MIME type
              share.setType(type);
              share.setPackage("com.instagram.android");
-               
+
              StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
              StrictMode.setVmPolicy(builder.build());
 
              Uri uri = Uri.fromFile(media);
 
+             share.setDataAndType(uri, type);
+
              // Add the URI to the Intent.
              share.putExtra(Intent.EXTRA_STREAM, uri);
 
              // Broadcast the Intent.
-             currentActivity.startActivityForResult(Intent.createChooser(share, "Share to"), INSTAGRAM_SHARE_REQUEST);
+             currentActivity.startActivityForResult(share, INSTAGRAM_SHARE_REQUEST);
           } else {
              callback.invoke("Sorry, image could not be loaded from disk.");
           }

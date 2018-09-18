@@ -125,7 +125,7 @@ public class RNReactNativeSharingWinstagramModule extends ReactContextBaseJavaMo
     }
 
     @ReactMethod
-    public void shareWithInstagram(String fileName, String base64str, Callback callback, Callback secondCallback) {
+    public void shareWithInstagram(String fileName, String base64str, String mode, Callback callback, Callback secondCallback) {
        Activity currentActivity = getCurrentActivity();
        this.callback = callback;
 
@@ -138,7 +138,7 @@ public class RNReactNativeSharingWinstagramModule extends ReactContextBaseJavaMo
          } else {
            if(media.exists()) {
              // Create the new Intent using the 'Send' action.
-             Intent share = new Intent("com.instagram.share.ADD_TO_STORY");
+             Intent share = new Intent("com.instagram.share."+mode);
 
              // Set the MIME type
              share.setType(type);

@@ -58,12 +58,14 @@ RCT_EXPORT_METHOD(share:(NSString *)base64Image copy:(NSString *)copy andUrl:(NS
 
 RCT_EXPORT_METHOD(shareWithInstagram:(NSString *)fileName
                   base64Image:(NSString *)base64Image
+                  mode:(NSString *)mode
                   successCallback:(RCTResponseSenderBlock)successCallback
                   failureCallback:(RCTResponseErrorBlock)failureCallback) {
     if ([[UIApplication sharedApplication] canOpenURL: [NSURL URLWithString:kInstagramURLScheme]]) {
         PHAuthorizationStatus status = [PHPhotoLibrary authorizationStatus];
         if (status == PHAuthorizationStatusAuthorized || status == PHAuthorizationStatusDenied) {
             [self savePicAndOpenInstagram: base64Image
+                            mode: mode
                           failureCallback: failureCallback
                           successCallback: successCallback];;
         }
@@ -71,6 +73,7 @@ RCT_EXPORT_METHOD(shareWithInstagram:(NSString *)fileName
             [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
                 if (status == PHAuthorizationStatusAuthorized) {
                     [self savePicAndOpenInstagram: base64Image
+                                    mode: mode
                                   failureCallback: failureCallback
                                   successCallback: successCallback];;
                 }
@@ -163,11 +166,13 @@ RCT_EXPORT_METHOD(shareWithFacebook:(NSString *)copy andUrl:(NSString *)url
 # pragma mark - Helpers
 
 -(void)savePicAndOpenInstagram:(NSString*)base64Image
+                mode: (NSString*)mode
                failureCallback:(RCTResponseErrorBlock)failureCallback
                successCallback:(RCTResponseSenderBlock)successCallback {
     UIImage *image = [UIImage imageWithData: [[NSData alloc]initWithBase64EncodedString:base64Image options:NSDataBase64DecodingIgnoreUnknownCharacters]];
 
     if (!image) {
+        NSLog(@"write error : No Image");
         return;
     }
 
@@ -186,14 +191,26 @@ RCT_EXPORT_METHOD(shareWithFacebook:(NSString *)copy andUrl:(NSString *)url
         placeholder = _mChangeRequest.placeholderForCreatedAsset;
 
     } completionHandler:^(BOOL success, NSError *error) {
-
         if (success) {
-            NSURL *instagramURL = [NSURL URLWithString:[NSString stringWithFormat:kInstagramLibraryURLScheme, [placeholder localIdentifier]]];
+            if ([mode isEqualToString:@"ADD_TO_FEED"]) {
+                NSURL *instagramURL = [NSURL URLWithString:[NSString stringWithFormat:kInstagramLibraryURLScheme, [placeholder localIdentifier]]];
 
-            if ([[UIApplication sharedApplication] canOpenURL:instagramURL]) {
-                [[UIApplication sharedApplication] openURL:instagramURL options:@{} completionHandler:NULL];
-                if (successCallback != NULL) {
-                    successCallback(@[]);
+                if ([[UIApplication sharedApplication] canOpenURL:instagramURL]) {
+                    [[UIApplication sharedApplication] openURL:instagramURL options:@{} completionHandler:NULL];
+                    if (successCallback != NULL) {
+                        successCallback(@[]);
+                    }
+                }
+            } else {
+                NSURL *instagramURL = [NSURL URLWithString:@"instagram-stories://share"];
+                if ([[UIApplication sharedApplication] canOpenURL:instagramURL]) {
+                    NSArray *pasteboardItems = @[@{@"com.instagram.sharedSticker.backgroundImage" : image}];
+                    NSDictionary *pasteboardOptions = @{UIPasteboardOptionExpirationDate : [[NSDate date] dateByAddingTimeInterval:60 * 5]};
+                    [[UIPasteboard generalPasteboard] setItems:pasteboardItems options:pasteboardOptions];
+                    [[UIApplication sharedApplication] openURL:instagramURL options:@{} completionHandler:NULL];
+                    if (successCallback != NULL) {
+                        successCallback(@[]);
+                    }
                 }
             }
         }

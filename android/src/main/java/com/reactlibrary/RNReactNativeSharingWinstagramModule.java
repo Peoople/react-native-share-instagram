@@ -124,6 +124,41 @@ public class RNReactNativeSharingWinstagramModule extends ReactContextBaseJavaMo
       return "RNReactNativeSharingWinstagram";
     }
 
+     @ReactMethod
+    public void shareWithTwitter(String fileName, String base64str, String message, Callback callback, Callback secondCallback) {
+       Activity currentActivity = getCurrentActivity();
+       this.callback = callback;
+
+       String type = "image/jpeg";
+
+       File media = saveImage(getReactApplicationContext(), fileName, base64str);
+
+         if(isAppInstalled("com.twitter.android") == false) {
+           callback.invoke("Sorry, twitter is not installed in your device.");
+         } else {
+           if(media.exists()) {
+               
+            StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+            StrictMode.setVmPolicy(builder.build());
+
+            Uri uri = Uri.fromFile(media);
+           
+            Intent intent = new Intent();
+            intent.setAction(Intent.ACTION_SEND);
+            intent.putExtra(Intent.EXTRA_TEXT, message);
+            intent.setType("text/plain");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.setType("image/jpeg");
+            intent.setPackage("com.twitter.android");
+
+             // Broadcast the Intent.
+            currentActivity.startActivityForResult(intent, INSTAGRAM_SHARE_REQUEST);
+          } else {
+             callback.invoke("Sorry, image could not be loaded from disk.");
+          }
+       }
+    }
+
     @ReactMethod
     public void shareWithInstagram(String fileName, String base64str, String mode, Callback callback, Callback secondCallback) {
        Activity currentActivity = getCurrentActivity();

@@ -47,158 +47,157 @@ import java.util.TimerTask;
 import android.content.pm.PackageManager;
 
 public class RNReactNativeSharingWinstagramModule extends ReactContextBaseJavaModule implements ActivityEventListener {
-    private final ReactApplicationContext reactContext;
-    private Callback successCallback;
+  private final ReactApplicationContext reactContext;
+  private Callback successCallback;
 
-    /* Checks if external storage is available for read and write */
-    public boolean isExternalStorageWritable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return true;
-        }
-        return false;
+  /* Checks if external storage is available for read and write */
+  public boolean isExternalStorageWritable() {
+    String state = Environment.getExternalStorageState();
+    if (Environment.MEDIA_MOUNTED.equals(state)) {
+      return true;
+    }
+    return false;
+  }
+
+  /* Checks if external storage is available to at least read */
+  public boolean isExternalStorageReadable() {
+    String state = Environment.getExternalStorageState();
+    if (Environment.MEDIA_MOUNTED.equals(state) || Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
+      return true;
+    }
+    return false;
+  }
+
+  private File saveImage(final Context context, String fileName, final String imageData) {
+    final byte[] imgBytesData = Base64.decode(imageData, Base64.DEFAULT);
+    final File file;
+
+    if (isExternalStorageWritable() == false || isExternalStorageReadable() == false) {
+      return null;
     }
 
-    /* Checks if external storage is available to at least read */
-    public boolean isExternalStorageReadable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state) || Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
-            return true;
+    file = new File(context.getExternalFilesDir(null), fileName);
+
+    try {
+      FileOutputStream fop = new FileOutputStream(file);
+
+      // if file doesn't exists, then create it
+      try {
+        if (!file.exists()) {
+          file.createNewFile();
         }
-        return false;
+
+        fop.write(imgBytesData);
+        fop.flush();
+        fop.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        return null;
+      }
+
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+      return null;
     }
+    return file;
+  }
 
-    private File saveImage(final Context context, String fileName, final String imageData) {
-        final byte[] imgBytesData = Base64.decode(imageData, Base64.DEFAULT);
-        final File file;
+  final int INSTAGRAM_SHARE_REQUEST = 500;
+  final int INSTAGRAM_SHARE_REQUEST_WITH_CHOOSER = 501;
 
-        if (isExternalStorageWritable() == false || isExternalStorageReadable() == false) {
-            return null;
-        }
+  public RNReactNativeSharingWinstagramModule(ReactApplicationContext reactContext) {
+    super(reactContext);
+    this.reactContext = reactContext;
+    this.reactContext.addActivityEventListener(new RNInstagramShareActivityEventListener());
+  }
 
-        file = new File(context.getExternalFilesDir(null), fileName);
+  private class RNInstagramShareActivityEventListener extends BaseActivityEventListener {
+    @Override
+    public void onActivityResult(Activity activity, final int requestCode, final int resultCode, final Intent intent) {
+      Log.d("------------>resultCode", "" + resultCode);
+      if (requestCode == INSTAGRAM_SHARE_REQUEST) {
+        successCallback.invoke("Image shared successfully with instagram. RESULT CODE -> " + resultCode);
+      }
+      if (requestCode == INSTAGRAM_SHARE_REQUEST_WITH_CHOOSER) {
+        successCallback.invoke("Image shared successfully with instagram w chooser. RESULT CODE -> " + resultCode);
+      }
+    }
+  }
 
+  @Override
+  public String getName() {
+    return "RNReactNativeSharingWinstagram";
+  }
+
+  @ReactMethod
+  public void shareWithInstagram(String fileName, String base64str, String mode, Callback successCallback,
+      Callback failureCallback) {
+    Activity currentActivity = getCurrentActivity();
+    this.successCallback = successCallback;
+
+    String type = "image/*";
+
+    File media = saveImage(getReactApplicationContext(), fileName, base64str);
+
+    if (isAppInstalled("com.instagram.android") == false) {
+      failureCallback.invoke("Sorry, instagram is not installed in your device.");
+    } else {
+      if (media.exists()) {
         try {
-            FileOutputStream fop = new FileOutputStream(file);
+          Intent share = new Intent("com.instagram.share." + mode);
 
-            // if file doesn't exists, then create it
-            try {
-                if (!file.exists()) {
-                    file.createNewFile();
-                }
-
-                fop.write(imgBytesData);
-                fop.flush();
-                fop.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return null;
+          StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+          StrictMode.setVmPolicy(builder.build());
+          Uri uri = Uri.fromFile(media);
+          share.setDataAndType(uri, type);
+          share.putExtra(Intent.EXTRA_STREAM, uri);
+          ResolveInfo canResolve = currentActivity.getPackageManager().resolveActivity(share, INSTAGRAM_SHARE_REQUEST);
+          if (canResolve != null) {
+            currentActivity.startActivityForResult(share, INSTAGRAM_SHARE_REQUEST);
+          } else {
+            Intent regShare = new Intent(Intent.ACTION_SEND);
+            regShare.setDataAndType(uri, type);
+            regShare.putExtra(Intent.EXTRA_STREAM, uri);
+            regShare.setPackage("com.instagram.android");
+            currentActivity.startActivityForResult(Intent.createChooser(regShare, "Compartir usando..."),
+                INSTAGRAM_SHARE_REQUEST_WITH_CHOOSER);
+          }
+        } catch (ActivityNotFoundException ex) {
+          failureCallback.invoke(ex.getMessage());
         }
-        return file;
+      } else {
+        failureCallback.invoke("Sorry, image could not be loaded from disk.");
+      }
     }
+  }
 
-    final int INSTAGRAM_SHARE_REQUEST = 500;
-    final int INSTAGRAM_SHARE_REQUEST_WITH_CHOOSER = 501;
+  @Override
+  public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
 
-    public RNReactNativeSharingWinstagramModule(ReactApplicationContext reactContext) {
-        super(reactContext);
-        this.reactContext = reactContext;
-        this.reactContext.addActivityEventListener(new RNInstagramShareActivityEventListener());
+  }
+
+  @Override
+  public void onNewIntent(Intent intent) {
+
+  }
+
+  @ReactMethod
+  public void hasInstagramInstalled(Callback callback) {
+    boolean equal = isAppInstalled("com.instagram.android");
+    callback.invoke(equal);
+  }
+
+  private boolean isAppInstalled(String packageName) {
+    Activity currentActivity = getCurrentActivity();
+    PackageManager pm = currentActivity.getPackageManager();
+    boolean installed = false;
+    try {
+      pm.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES);
+      installed = true;
+    } catch (PackageManager.NameNotFoundException e) {
+      installed = false;
     }
-
-    private class RNInstagramShareActivityEventListener extends BaseActivityEventListener {
-        @Override
-        public void onActivityResult(Activity activity, final int requestCode, final int resultCode,
-                final Intent intent) {
-            Log.d("------------>resultCode", "" + resultCode);
-            if (requestCode == INSTAGRAM_SHARE_REQUEST) {
-                successCallback.invoke("Image shared successfully with instagram. RESULT CODE -> " + resultCode);
-            }
-            if (requestCode == INSTAGRAM_SHARE_REQUEST_WITH_CHOOSER) {
-                successCallback
-                        .invoke("Image shared successfully with instagram w chooser. RESULT CODE -> " + resultCode);
-            }
-        }
-    }
-
-    @Override
-    public String getName() {
-        return "RNReactNativeSharingWinstagram";
-    }
-
-    @ReactMethod
-    public void shareWithInstagram(String fileName, String base64str, String mode, Callback successCallback,
-            Callback failureCallback) {
-        Activity currentActivity = getCurrentActivity();
-        this.successCallback = successCallback;
-
-        String type = "image/*";
-
-        File media = saveImage(getReactApplicationContext(), fileName, base64str);
-
-        if (isAppInstalled("com.instagram.android") == false) {
-            failureCallback.invoke("Sorry, instagram is not installed in your device.");
-        } else {
-            if (media.exists()) {
-                try {
-                    Intent share = new Intent("com.instagram.share." + mode);
-
-                    StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
-                    StrictMode.setVmPolicy(builder.build());
-                    Uri uri = Uri.fromFile(media);
-                    share.setDataAndType(uri, type);
-                    share.putExtra(Intent.EXTRA_STREAM, uri);
-                    ResolveInfo canResolve = currentActivity.getPackageManager().resolveActivity(share,
-                            INSTAGRAM_SHARE_REQUEST);
-                    if (canResolve != null) {
-                        currentActivity.startActivityForResult(share, INSTAGRAM_SHARE_REQUEST);
-                    } else {
-                        Intent regShare = new Intent(Intent.ACTION_SEND);
-                        regShare.setPackage("com.instagram.android");
-                        currentActivity.startActivityForResult(Intent.createChooser(regShare, "Compartir usando..."),
-                                INSTAGRAM_SHARE_REQUEST_WITH_CHOOSER);
-                    }
-                } catch (ActivityNotFoundException ex) {
-                    failureCallback.invoke(ex.getMessage());
-                }
-            } else {
-                failureCallback.invoke("Sorry, image could not be loaded from disk.");
-            }
-        }
-    }
-
-    @Override
-    public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
-
-    }
-
-    @Override
-    public void onNewIntent(Intent intent) {
-
-    }
-
-    @ReactMethod
-    public void hasInstagramInstalled(Callback callback) {
-        boolean equal = isAppInstalled("com.instagram.android");
-        callback.invoke(equal);
-    }
-
-    private boolean isAppInstalled(String packageName) {
-        Activity currentActivity = getCurrentActivity();
-        PackageManager pm = currentActivity.getPackageManager();
-        boolean installed = false;
-        try {
-            pm.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES);
-            installed = true;
-        } catch (PackageManager.NameNotFoundException e) {
-            installed = false;
-        }
-        return installed;
-    }
+    return installed;
+  }
 
 }

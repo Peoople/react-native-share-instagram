@@ -103,6 +103,7 @@ public class RNReactNativeSharingWinstagramModule extends ReactContextBaseJavaMo
   }
 
   final int INSTAGRAM_SHARE_REQUEST = 500;
+  final int TWITTER_SHARE_REQUEST = 400;
   final int INSTAGRAM_SHARE_REQUEST_WITH_CHOOSER = 501;
 
   public RNReactNativeSharingWinstagramModule(ReactApplicationContext reactContext) {
@@ -121,12 +122,62 @@ public class RNReactNativeSharingWinstagramModule extends ReactContextBaseJavaMo
       if (requestCode == INSTAGRAM_SHARE_REQUEST_WITH_CHOOSER) {
         successCallback.invoke("Image shared successfully with instagram w chooser. RESULT CODE -> " + resultCode);
       }
+      if (requestCode == TWITTER_SHARE_REQUEST) {
+        successCallback.invoke("Image shared successfully with twitter. RESULT CODE -> " + resultCode);
+      }
     }
   }
 
   @Override
   public String getName() {
     return "RNReactNativeSharingWinstagram";
+  }
+
+  @ReactMethod
+  public void hasTwitterInstalled(Callback callback) {
+    boolean equal = isAppInstalled("com.instagram.android");
+    callback.invoke(equal);
+  }
+
+  @ReactMethod
+  public void shareWithTwitter(String fileName, String base64str, String message, Callback successCallback,
+      Callback failureCallback) {
+    Activity currentActivity = getCurrentActivity();
+    this.successCallback = successCallback;
+
+    String type = "image/*";
+
+    File media = saveImage(getReactApplicationContext(), fileName, base64str);
+
+    if (isAppInstalled("com.twitter.android") == false) {
+      failureCallback.invoke("Sorry, twitter is not installed in your device.");
+    } else {
+      if (media.exists()) {
+        try {
+          StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+          StrictMode.setVmPolicy(builder.build());
+
+          Uri uri = Uri.fromFile(media);
+
+          Intent intent = new Intent(Intent.ACTION_SEND);
+          intent.setPackage("com.twitter.android");
+          intent.setType("text/plain");
+          intent.putExtra(Intent.EXTRA_TEXT, message);
+          intent.setDataAndType(uri, type);
+          intent.putExtra(Intent.EXTRA_STREAM, uri);
+          ResolveInfo canResolve = currentActivity.getPackageManager().resolveActivity(intent, TWITTER_SHARE_REQUEST);
+          if (canResolve != null) {
+            currentActivity.startActivityForResult(intent, TWITTER_SHARE_REQUEST);
+          } else {
+            failureCallback.invoke("The image could not be shared.");
+          }
+        } catch (ActivityNotFoundException ex) {
+          failureCallback.invoke(ex.getMessage());
+        }
+      } else {
+        failureCallback.invoke("Sorry, image could not be loaded from disk.");
+      }
+    }
   }
 
   @ReactMethod

@@ -87,13 +87,22 @@ RCT_EXPORT_METHOD(shareWithInstagram:(NSString *)fileName
     }
 }
 
-RCT_EXPORT_METHOD(shareWithTwitter:(NSString *)copy andUrl:(NSString *)url
-                  failureCallback:(RCTResponseErrorBlock)failureCallback
-                  successCallback:(RCTResponseSenderBlock)successCallback) {
-    if ([SLComposeViewController isAvailableForServiceType:SLServiceTypeTwitter]) {
+RCT_EXPORT_METHOD(shareWithTwitter:(NSString *)fileName
+                  base64Image:(NSString *)base64Image 
+                  copy: (NSString *)copy 
+                  successCallback:(RCTResponseSenderBlock)successCallback
+                  failureCallback:(RCTResponseErrorBlock)failureCallback) {
         SLComposeViewController *twPostSheet = [SLComposeViewController composeViewControllerForServiceType:SLServiceTypeTwitter];
+
+        UIImage *image = [UIImage imageWithData: [[NSData alloc]initWithBase64EncodedString:base64Image options:NSDataBase64DecodingIgnoreUnknownCharacters]];
+
+        if (!image) {
+            NSLog(@"write error : No Image");
+            return;
+        }
+
+        [twPostSheet addImage:image];
         [twPostSheet setInitialText:copy];
-        [twPostSheet addURL:[NSURL URLWithString:url]];
 
         UIViewController *controller = RCTPresentedViewController();
         twPostSheet.completionHandler = ^(SLComposeViewControllerResult result) {
@@ -107,12 +116,6 @@ RCT_EXPORT_METHOD(shareWithTwitter:(NSString *)copy andUrl:(NSString *)url
             }
         };
         [controller presentViewController:twPostSheet animated:YES completion:nil];
-    } else {
-        NSString *errorMessage = @"Not installed";
-        NSDictionary *userInfo = @{NSLocalizedFailureReasonErrorKey: NSLocalizedString(errorMessage, nil)};
-        NSError *error = [NSError errorWithDomain:@"com.rnshare" code:1 userInfo:userInfo];
-        failureCallback(error);
-    }
 }
 
 RCT_EXPORT_METHOD(shareWithWhatsapp:(NSString *)copy andUrl:(NSString *)url

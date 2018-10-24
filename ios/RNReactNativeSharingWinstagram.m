@@ -87,21 +87,12 @@ RCT_EXPORT_METHOD(shareWithInstagram:(NSString *)fileName
     }
 }
 
-RCT_EXPORT_METHOD(shareWithTwitter:(NSString *)fileName
-                  base64Image:(NSString *)base64Image 
-                  copy: (NSString *)copy 
+RCT_EXPORT_METHOD(shareWithTwitter:(NSString *)copy
                   successCallback:(RCTResponseSenderBlock)successCallback
                   failureCallback:(RCTResponseErrorBlock)failureCallback) {
         SLComposeViewController *twPostSheet = [SLComposeViewController composeViewControllerForServiceType:SLServiceTypeTwitter];
 
-        UIImage *image = [UIImage imageWithData: [[NSData alloc]initWithBase64EncodedString:base64Image options:NSDataBase64DecodingIgnoreUnknownCharacters]];
 
-        if (!image) {
-            NSLog(@"write error : No Image");
-            return;
-        }
-
-        [twPostSheet addImage:image];
         [twPostSheet setInitialText:copy];
 
         UIViewController *controller = RCTPresentedViewController();

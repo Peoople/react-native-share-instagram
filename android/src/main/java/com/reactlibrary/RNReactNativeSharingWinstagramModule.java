@@ -1,4 +1,4 @@
-package com.reactlibrary;
+package com.reactnative.share;
 
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.BaseActivityEventListener;

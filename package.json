@@ -1,6 +1,6 @@
 {
   "name": "peoople-react-native-social-share",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "React Native social share with iOS and Android based fork of @micabe/react-native-share-instagram",
   "main": "index.js",
   "scripts": {
@@ -12,6 +12,6 @@
   "author": "Peoople <hola@peoople.co>",
   "license": "MIT",
   "peerDependencies": {
-    "react-native": "^0.47.0"
+    "react-native": "^0.60.0"
   }
 }
